@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>時間割モンスター</title>
+<style>
+  :root{
+    color-scheme: light;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    min-height:100vh;
+    background:linear-gradient(160deg,#fff6e9 0%, #e8f7ff 55%, #ffe9f3 100%);
+    font-family:"Hiragino Maru Gothic ProN","BIZ UDPGothic","Rounded Mplus 1c","Yu Gothic","Meiryo",sans-serif;
+    color:#3a3a3a;
+    display:flex;
+    justify-content:center;
+    padding:24px 12px 60px;
+  }
+  #app{ width:100%; max-width:480px; }
+  .card-shell{
+    background:#fff;
+    border-radius:28px;
+    box-shadow:0 12px 30px rgba(0,0,0,0.10);
+    padding:26px 22px;
+    position:relative;
+    min-height:520px;
+  }
+  h1.app-title{ text-align:center; font-size:1.5rem; margin:4px 0 4px; }
+  .subtitle{ text-align:center; color:#8a8a8a; font-size:0.85rem; margin-bottom:18px; }
+  .empty-msg{ text-align:center; color:#9a9a9a; padding:24px 8px; font-size:0.9rem; }
+  .profile-list{ display:flex; flex-direction:column; gap:12px; margin-bottom:18px; max-height:340px; overflow-y:auto; }
+  .profile-card{
+    display:flex; align-items:center; gap:12px;
+    background:linear-gradient(135deg, color-mix(in srgb, var(--pcolor) 35%, white), white);
+    border:2px solid var(--pcolor);
+    border-radius:18px; padding:10px 14px; cursor:pointer;
+    transition:transform 0.15s;
+  }
+  .profile-card:hover{ transform:translateY(-2px); }
+  .profile-avatar{
+    width:44px; height:44px; border-radius:50%; background:var(--pcolor);
+    display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.1rem; color:#fff;
+    flex-shrink:0;
+  }
+  .profile-info{ flex:1; min-width:0; }
+  .profile-name{ font-weight:bold; font-size:1rem; }
+  .profile-sub{ font-size:0.78rem; color:#888; }
+  .del-btn{
+    background:none; border:none; font-size:1.1rem; color:#bbb; cursor:pointer; padding:4px 8px; border-radius:8px;
+  }
+  .del-btn:hover{ background:#f3f3f3; color:#e05a5a; }
+  .big-btn{
+    width:100%; padding:14px; border:none; border-radius:16px; font-size:1rem; font-weight:bold;
+    background:linear-gradient(135deg,#ffb5c0,#ffd97d); color:#5a3a1a; cursor:pointer;
+    box-shadow:0 6px 14px rgba(255,170,120,0.35);
+  }
+  .big-btn:active{ transform:translateY(1px); }
+  .back-btn{
+    background:none; border:none; color:#999; font-size:0.9rem; cursor:pointer; margin-bottom:8px; padding:4px 0;
+  }
+  .back-btn:hover{ color:#555; }
+  .form-label{ display:block; font-size:0.85rem; color:#777; margin:14px 0 6px; }
+  .text-input{
+    width:100%; padding:12px 14px; border-radius:14px; border:2px solid #eee; font-size:1rem;
+    font-family:inherit; outline:none;
+  }
+  .text-input:focus{ border-color:#ffc97d; }
+  .color-swatches{ display:flex; gap:10px; flex-wrap:wrap; }
+  .swatch{
+    width:36px; height:36px; border-radius:50%; border:3px solid transparent; cursor:pointer;
+  }
+  .swatch.selected{ border-color:#555; transform:scale(1.1); }
+  .error-text{ color:#e05a5a; font-size:0.82rem; margin-top:8px; text-align:center; }
+  h2{ font-size:1.15rem; margin:6px 0 0; }
+
+  .subj-chip-grid{ display:flex; flex-wrap:wrap; gap:8px; }
+  .subj-chip{
+    border:2px solid #eee; background:#fafafa; border-radius:14px; padding:8px 12px; font-size:0.85rem;
+    cursor:pointer; color:#888; display:flex; align-items:center; gap:4px;
+  }
+  .subj-chip-emoji{ font-size:1rem; }
+  .subj-chip.on{ background:#fff8ec; border-color:#ffc97d; color:#5a3a1a; font-weight:bold; }
+  .custom-chip-row{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:4px; }
+  .custom-chip{
+    display:inline-flex; align-items:center; gap:6px; background:#f3f0ff; border:2px solid #d8cdfb;
+    border-radius:14px; padding:6px 8px 6px 12px; font-size:0.85rem; color:#5a4a8a;
+  }
+  .custom-chip-x{ background:none; border:none; color:#aaa; cursor:pointer; font-size:1rem; padding:0 4px; }
+  .custom-chip-x:hover{ color:#e05a5a; }
+  .custom-chip-empty{ font-size:0.8rem; color:#bbb; padding:6px 0; }
+  .custom-form{ background:#faf8f3; border-radius:14px; padding:12px; margin-top:6px; }
+  .emoji-picker{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .emoji-pick{
+    width:34px; height:34px; border-radius:10px; border:2px solid transparent; background:#fff;
+    font-size:1rem; cursor:pointer;
+  }
+  .emoji-pick.selected{ border-color:#ffc97d; background:#fff8ec; }
+
+  .home-header{ display:flex; align-items:center; gap:10px; margin-bottom:18px; }
+  .icon-btn{
+    background:#f7f4ee; border:none; width:38px; height:38px; border-radius:50%; font-size:1rem; cursor:pointer;
+    flex-shrink:0;
+  }
+  .icon-btn:hover{ background:#efe9dd; }
+  .home-title{ flex:1; text-align:center; }
+  .home-name{ font-weight:bold; font-size:1.05rem; }
+  .home-sub{ font-size:0.78rem; color:#999; }
+
+  .subject-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .subject-card{
+    border-radius:20px; padding:14px 8px 12px; text-align:center; cursor:pointer;
+    background:linear-gradient(160deg, color-mix(in srgb, var(--scolor) 22%, white), white);
+    border:2px solid color-mix(in srgb, var(--scolor) 55%, white);
+    transition:transform 0.15s;
+  }
+  .subject-card:hover{ transform:translateY(-3px); }
+  .subject-name{ font-weight:bold; font-size:0.92rem; margin-top:4px; }
+  .subject-level{ font-size:0.78rem; color:#888; margin-bottom:6px; }
+  .day-dots{ display:flex; justify-content:center; gap:4px; }
+  .dot{ width:7px; height:7px; border-radius:50%; background:#e6e6e6; }
+  .dot.done{ background:var(--scolor); }
+
+  /* monster */
+  .monster{
+    position:relative; display:flex; align-items:flex-end; justify-content:center;
+    height:calc(var(--bodysize) * 1.5); margin:0 auto;
+  }
+  .monster-body{
+    width:var(--bodysize); height:var(--bodysize); position:relative; z-index:1;
+    border-radius:48% 48% 50% 50% / 56% 56% 44% 44%;
+    background:linear-gradient(160deg, var(--scolor), var(--sdark));
+    display:flex; align-items:center; justify-content:center; gap:calc(var(--bodysize)*0.1);
+    box-shadow:inset 0 calc(var(--bodysize)*-0.08) calc(var(--bodysize)*0.16) rgba(0,0,0,0.18),
+               0 6px 12px rgba(0,0,0,0.12),
+               0 0 0 3px rgba(255,255,255,0.55);
+    animation:floaty 3s ease-in-out infinite;
+  }
+  .ear{
+    position:absolute; top:calc(var(--bodysize)*-0.1); width:calc(var(--bodysize)*0.34); height:calc(var(--bodysize)*0.34);
+    background:linear-gradient(160deg, var(--scolor), var(--sdark)); border-radius:50%; z-index:0;
+    box-shadow:0 0 0 3px rgba(255,255,255,0.55);
+  }
+  .ear.left{ left:calc(var(--bodysize)*0.0); }
+  .ear.right{ right:calc(var(--bodysize)*0.0); }
+  .eye{ width:calc(var(--bodysize)*0.22); height:calc(var(--bodysize)*0.24); background:#fff; border-radius:50%; position:relative; box-shadow:0 1px 2px rgba(0,0,0,0.12); }
+  .eye::before{ content:''; position:absolute; width:48%; height:48%; background:#3a3a3a; border-radius:50%; top:32%; left:26%; }
+  .eye::after{ content:''; position:absolute; width:24%; height:24%; background:#fff; border-radius:50%; top:18%; left:56%; }
+  .stage-1 .eye{ height:calc(var(--bodysize)*0.06); border-radius:6px; background:#3a3a3a; box-shadow:none; }
+  .stage-1 .eye::before, .stage-1 .eye::after{ display:none; }
+  .blush{
+    position:absolute; bottom:calc(var(--bodysize)*0.22);
+    width:calc(var(--bodysize)*0.14); height:calc(var(--bodysize)*0.09);
+    background:rgba(255,255,255,0.55); border-radius:50%;
+  }
+  .blush.left{ left:calc(var(--bodysize)*0.04); }
+  .blush.right{ right:calc(var(--bodysize)*0.04); }
+  .stage-1 .blush{ display:none; }
+  .mouth{
+    position:absolute; bottom:calc(var(--bodysize)*0.15); left:50%; transform:translateX(-50%);
+    width:calc(var(--bodysize)*0.22); height:calc(var(--bodysize)*0.12);
+    border-bottom:calc(var(--bodysize)*0.045) solid rgba(0,0,0,0.32);
+    border-radius:0 0 50% 50%;
+  }
+  .accessory{
+    position:absolute; right:calc(var(--bodysize)*-0.08); bottom:calc(var(--bodysize)*-0.08);
+    font-size:calc(var(--bodysize)*0.36); z-index:2; filter:drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+  }
+  .crown{ position:absolute; top:calc(var(--bodysize)*-0.34); font-size:calc(var(--bodysize)*0.36); z-index:2; }
+  .aura{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:calc(var(--bodysize)*1.6); height:calc(var(--bodysize)*1.6); border-radius:50%;
+    background:radial-gradient(circle, var(--scolor), transparent 70%);
+    opacity:0.3; z-index:0; animation:pulse 2.4s ease-in-out infinite;
+  }
+  .sparkles{
+    position:absolute; top:calc(var(--bodysize)*-0.3); font-size:calc(var(--bodysize)*0.14);
+    width:100%; text-align:center; animation:spin 7s linear infinite; z-index:2;
+  }
+  @keyframes floaty{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-6%); } }
+  @keyframes pulse{ 0%,100%{ transform:translate(-50%,-50%) scale(1); opacity:0.22; } 50%{ transform:translate(-50%,-50%) scale(1.08); opacity:0.4; } }
+  @keyframes spin{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
+
+  .detail-monster-wrap{ display:flex; justify-content:center; margin:10px 0 6px; }
+  .detail-name{ text-align:center; font-weight:bold; font-size:1.15rem; margin-top:6px; }
+  .detail-subject{ font-size:0.8rem; color:#999; font-weight:normal; }
+  .detail-stage{ text-align:center; font-size:0.85rem; color:#888; margin-bottom:14px; }
+  .exp-bar{ height:14px; border-radius:10px; background:#f0eee8; overflow:hidden; }
+  .exp-fill{ height:100%; background:linear-gradient(90deg,var(--scolor),var(--sdark)); transition:width 0.4s; }
+  .exp-text{ text-align:center; font-size:0.75rem; color:#999; margin:6px 0 10px; }
+  .streak-text{ text-align:center; font-size:0.85rem; margin-bottom:10px; }
+  .flavor-text{ text-align:center; font-size:0.85rem; color:#777; background:#faf8f3; border-radius:14px; padding:10px; margin-bottom:18px; }
+  .action-row{ display:flex; flex-direction:column; gap:10px; }
+  .action-btn{
+    padding:13px; border-radius:16px; border:none; font-size:0.95rem; font-weight:bold; cursor:pointer;
+    background:#f2f0ea; color:#555;
+  }
+  .action-btn.primary{ background:linear-gradient(135deg,var(--scolor),var(--sdark)); color:#fff; }
+  .homework-btn{ background:linear-gradient(135deg,#a0e7ff,#4ea8de); color:#fff; }
+  .homework-btn:disabled{ background:#eee; color:#bbb; cursor:default; }
+  .test-btn{ background:linear-gradient(135deg,#ffd97d,#ff9f1c); color:#5a3a1a; }
+
+  .modal-backdrop, .overlay-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center;
+    padding:20px; z-index:50;
+  }
+  .modal-box, .overlay-box{
+    background:#fff; border-radius:20px; padding:24px 22px; width:100%; max-width:340px; text-align:center;
+    position:relative; overflow:hidden;
+  }
+  .score-input{
+    width:100%; padding:14px; font-size:1.3rem; text-align:center; border-radius:14px; border:2px solid #eee;
+    margin:14px 0; font-family:inherit;
+  }
+  .score-input:focus{ outline:none; border-color:#ffc97d; }
+  .modal-btn-row{ display:flex; gap:10px; }
+  .modal-btn-row .action-btn{ flex:1; }
+  .overlay-emoji{ font-size:2.6rem; }
+  .overlay-title{ font-weight:bold; font-size:1.2rem; margin:8px 0 4px; }
+  .overlay-message{ color:#777; font-size:0.9rem; margin-bottom:16px; }
+  .confetti{ position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  .confetti-piece{ position:absolute; top:-24px; font-size:1.2rem; animation:fall linear forwards; }
+  @keyframes fall{ to{ transform:translateY(420px) rotate(360deg); opacity:0; } }
+  .footer-note{ text-align:center; font-size:0.7rem; color:#bbb; margin-top:16px; }
+  .backup-row{ display:flex; justify-content:center; gap:14px; margin-top:10px; }
+  .link-btn{ background:none; border:none; color:#aaa; font-size:0.72rem; cursor:pointer; text-decoration:underline; padding:4px; }
+  .link-btn:hover{ color:#777; }
+  .toast{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:10px 18px; border-radius:12px; font-size:0.82rem; z-index:80; }
+
+  /* ----- サボり（ネグレクト）見た目 ----- */
+  .monster.neglect-1 .monster-body, .monster.neglect-1 .ear, .monster.neglect-1 .accessory{ filter:grayscale(0.5) brightness(0.93); }
+  .monster.neglect-2 .monster-body, .monster.neglect-2 .ear, .monster.neglect-2 .accessory{ filter:grayscale(0.85) brightness(0.85); }
+  .monster.neglect-1 .monster-body{ animation:none; }
+  .monster.neglect-2 .monster-body{ animation:wobble 4s ease-in-out infinite; }
+  /* 口を「への字」にしてしょんぼり顔に */
+  .monster.neglect-1 .mouth, .monster.neglect-2 .mouth{
+    border-bottom:none; border-top:calc(var(--bodysize)*0.045) solid rgba(0,0,0,0.32);
+    border-radius:50% 50% 0 0; bottom:calc(var(--bodysize)*0.10);
+  }
+  .monster.neglect-1 .eye::before{ top:52%; }
+  .monster.neglect-2 .eye{ height:calc(var(--bodysize)*0.05); border-radius:6px; background:#3a3a3a; box-shadow:none; }
+  .monster.neglect-2 .eye::before, .monster.neglect-2 .eye::after{ display:none; }
+  .monster.neglect-2 .blush{ display:none; }
+  .sweat{ position:absolute; top:calc(var(--bodysize)*0.16); right:calc(var(--bodysize)*0.02); font-size:calc(var(--bodysize)*0.2); animation:floaty 2s ease-in-out infinite; z-index:3; }
+  .zzz{ position:absolute; top:calc(var(--bodysize)*-0.06); right:calc(var(--bodysize)*-0.02); font-size:calc(var(--bodysize)*0.24); z-index:3; animation:floaty 2.4s ease-in-out infinite; }
+  @keyframes wobble{ 0%,100%{ transform:rotate(-3deg); } 50%{ transform:rotate(3deg); } }
+
+  /* ----- 吹き出し ----- */
+  .speech-bubble{
+    position:relative; max-width:240px; margin:6px auto 14px; background:#fff;
+    border:2px solid var(--scolor); border-radius:16px; padding:9px 14px 7px;
+    font-size:0.88rem; color:#5a5a5a; text-align:center; cursor:pointer;
+    box-shadow:0 4px 10px rgba(0,0,0,0.06); transition:opacity 0.25s;
+  }
+  .speech-bubble::after{
+    content:''; position:absolute; bottom:-10px; left:50%; transform:translateX(-50%);
+    border-left:9px solid transparent; border-right:9px solid transparent;
+    border-top:10px solid var(--scolor);
+  }
+  .speech-bubble.fade{ opacity:0; }
+  .tap-hint{ display:block; font-size:0.62rem; color:#c4c4c4; margin-top:3px; }
+  .rename-btn{ background:none; border:none; cursor:pointer; font-size:0.85rem; opacity:0.55; padding:0 2px; }
+  .rename-btn:hover{ opacity:1; }
+
+  /* ----- 編集画面 ----- */
+  .edit-subj-list{ display:flex; flex-direction:column; gap:8px; }
+  .edit-subj-row{ display:flex; align-items:center; gap:8px; background:#faf8f3; border-radius:14px; padding:8px 10px; }
+  .edit-subj-emoji{ font-size:1.3rem; flex-shrink:0; }
+  .edit-subj-fields{ flex:1; display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .text-input.edit-mini{ padding:8px 10px; font-size:0.9rem; border-radius:10px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = 'jikanwariMonsterSave_v1';
+  var PALETTE = ['#ffb5c0','#ffd97d','#b8f2c9','#a0e7ff','#c9b8ff','#ffc9a0'];
+  var HOMEWORK_EXP = 15;
+  var STAGE_NAMES = ['たまごのころ','少年・少女期','げんき成長期','ピカピカ完全体'];
+  var BODY_SIZE = {1:70, 2:92, 3:114, 4:136};
+
+  var PRESET_SUBJECTS = [
+    { id:'kokugo', name:'国語', emoji:'📖', color:'#ff8fab', dark:'#d9587e', monster:'モジリン',
+      flavor:['ことばがすき…','本をたくさん読みたいなぁ','かん字、おぼえたよ!'] },
+    { id:'sansu', name:'算数', emoji:'🔢', color:'#4ea8de', dark:'#2c6fa8', monster:'スウジン',
+      flavor:['けいさん、れんしゅうする?','すうじはたのしいぞ!','もっと足し算したいな!'] },
+    { id:'rika', name:'理科', emoji:'🧪', color:'#70e000', dark:'#4a9600', monster:'リカメロン',
+      flavor:['じっけん、しよう!','ふしぎがいっぱいだね!','いろが変わってきた…?'] },
+    { id:'shakai', name:'社会', emoji:'🌍', color:'#ff9f1c', dark:'#cf7a00', monster:'チズロン',
+      flavor:['ちずをみてみよう!','れきしのおはなし、する?','せかいはひろいなぁ'] },
+    { id:'eigo', name:'英語', emoji:'🔤', color:'#9d8cff', dark:'#6a57d9', monster:'エイゴン',
+      flavor:['Hello! きょうもよろしくね','えいごの歌、すきだなぁ','しゃべれるとうれしいね!'] },
+    { id:'taiiku', name:'体育', emoji:'⚽', color:'#ffb86b', dark:'#d97f2c', monster:'タイレックス',
+      flavor:['からだをうごかそう!','きょうもげんきいっぱい!','もっと走りたいな!'] },
+    { id:'zukou', name:'図工', emoji:'🎨', color:'#6bd6c4', dark:'#2c9c8a', monster:'ズコッティ',
+      flavor:['なにつくろうかなぁ','色をぬるのすき!','てづくり、たのしいね!'] },
+    { id:'ongaku', name:'音楽', emoji:'🎵', color:'#ffd1e8', dark:'#e07ab0', monster:'オンプー',
+      flavor:['うたおう!','リズム、たのしいな♪','がっき、ひいてみる?'] }
+  ];
+  var DEFAULT_SUBJECT_IDS = ['kokugo','sansu','rika','shakai'];
+  var CUSTOM_EMOJIS = ['🌟','🧩','🐾','🍀','🎮','📐','🌐','🍳','🎻','🧵','🪐','🐉'];
+  var GENERIC_FLAVOR = ['がんばるぞ!','もっとやりたいな!','たのしいね!','つづけるとつよくなるよ!'];
+
+  var HOMEWORK_MESSAGES = ['やったね!えらい!','コツコツがちからになる!','今日もがんばったね!','すごい!その調子!'];
+
+  // ランダムな応援メッセージ（教科を問わず喋る）
+  var ENCOURAGE_LINES = [
+    'きょうもがんばろうね!','むりはしないでね','いっしょにやろう!','キミならできるよ!',
+    'すこしずつでいいんだよ','やすむのもだいじ!','つづけるキミ、すごいよ!','ファイト!',
+    'えがおがいちばん!','ちょっと休けいする?','あきらめないキミがすき','おうえんしてるよ!',
+    'きょうのキミは100てん!','いっしょなら こわくない!','だいすきだよ〜'
+  ];
+  // サボり中にキャラが喋るさみしいセリフ
+  var NEGLECT_LINES = [
+    'さいきん さみしいな…','また あそびに きてね','まってたよ〜','ひさしぶり…うれしいな',
+    'いっしょに がんばろうよ','わすれちゃ いやだよ…','ちょっと げんきが でないや…'
+  ];
+  // サボりレベルごとの状態ラベル
+  var NEGLECT_LABEL = { 1:'すねモード…', 2:'ぐうたら化!?' };
+  var NEGLECT_AFTER_DAYS_1 = 3;  // 何日やらないとレベル1（すね）になるか
+  var NEGLECT_AFTER_DAYS_2 = 7;  // 何日やらないとレベル2（ぐうたら）になるか
+
+  function darkenColor(hex, amount){
+    var m = /^#?([0-9a-f]{6})$/i.exec(hex);
+    if(!m) return hex;
+    var num = parseInt(m[1], 16);
+    var r = Math.max(0, Math.round(((num >> 16) & 0xff) * (1 - amount)));
+    var g = Math.max(0, Math.round(((num >> 8) & 0xff) * (1 - amount)));
+    var b = Math.max(0, Math.round((num & 0xff) * (1 - amount)));
+    return '#' + [r,g,b].map(function(v){ return v.toString(16).padStart(2,'0'); }).join('');
+  }
+  function makeCustomSubject(name, emoji, idx){
+    var color = PALETTE[idx % PALETTE.length];
+    return {
+      id: 'custom_' + Date.now() + '_' + Math.floor(Math.random()*10000),
+      name: name, emoji: emoji || '🌟', color: color, dark: darkenColor(color, 0.35),
+      monster: name + 'モン', flavor: GENERIC_FLAVOR, custom: true
+    };
+  }
+
+  // ---------- storage ----------
+  function load(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return { profiles:[] };
+      var parsed = JSON.parse(raw);
+      if(!parsed.profiles) parsed.profiles = [];
+      migrateProfiles(parsed.profiles);
+      return parsed;
+    }catch(e){ return { profiles:[] }; }
+  }
+  function migrateProfiles(profiles){
+    profiles.forEach(function(p){
+      if(!p.subjects || !p.subjects.length){
+        p.subjects = PRESET_SUBJECTS.filter(function(s){ return DEFAULT_SUBJECT_IDS.indexOf(s.id) !== -1; });
+      }
+      if(!p.characters) p.characters = {};
+      p.subjects.forEach(function(s){
+        if(!p.characters[s.id]) p.characters[s.id] = { exp:0, history:[] };
+      });
+    });
+  }
+  function save(data){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }catch(e){ /* ignore */ }
+  }
+  function storageWorks(){
+    try{
+      var k = '__jikanwari_test__';
+      localStorage.setItem(k, '1');
+      var ok = localStorage.getItem(k) === '1';
+      localStorage.removeItem(k);
+      return ok;
+    }catch(e){ return false; }
+  }
+
+  var DATA = load();
+  var ui = {
+    screen:'title', profileId:null, subjectId:null,
+    pendingName:'', pendingColor:PALETTE[0], createError:null,
+    pendingSubjectIds: DEFAULT_SUBJECT_IDS.slice(),
+    pendingCustomSubjects: [],
+    pendingCustomEmoji: CUSTOM_EMOJIS[0],
+    pendingCustomName: '',
+    // 編集画面用
+    editName:'', editColor:PALETTE[0], editSubjects:[],
+    editAddEmoji:CUSTOM_EMOJIS[0], editAddName:'', editError:null,
+    testModalOpen:false, pendingScore:null, testError:null, overlay:null
+  };
+  var speechTimer = null;
+
+  // ---------- helpers ----------
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+  function formatDate(d){
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  function todayStr(){ return formatDate(new Date()); }
+
+  function freshCharacters(subjects){
+    var obj = {};
+    subjects.forEach(function(s){ obj[s.id] = { exp:0, history:[] }; });
+    return obj;
+  }
+
+  function getProfile(){
+    return DATA.profiles.find(function(p){ return p.id === ui.profileId; }) || null;
+  }
+  function getSubject(profile, id){
+    if(!profile) return null;
+    return profile.subjects.find(function(s){ return s.id === id; }) || null;
+  }
+
+  function levelFromExp(exp){
+    var level = 1, need = 50, total = 0;
+    while(exp >= total + need){
+      total += need;
+      level += 1;
+      need = 50 * level;
+    }
+    return { level:level, currentExp: exp - total, neededExp: need };
+  }
+  function stageFromLevel(level){
+    if(level >= 15) return 4;
+    if(level >= 10) return 3;
+    if(level >= 5) return 2;
+    return 1;
+  }
+  function getTestExp(score){
+    var exp = Math.round(score / 2);
+    if(score >= 100) exp += 25;
+    else if(score >= 80) exp += 15;
+    else if(score >= 60) exp += 5;
+    return exp;
+  }
+  function scoreTierTitle(score){
+    if(score >= 100) return '💯 かんぺき!';
+    if(score >= 80) return '⭐ よくできました!';
+    if(score >= 60) return '👍 がんばったね!';
+    return '🌱 つぎはきっとできる!';
+  }
+  function homeworkMessage(){
+    return HOMEWORK_MESSAGES[Math.floor(Math.random() * HOMEWORK_MESSAGES.length)];
+  }
+  function hasHomeworkToday(history){
+    var t = todayStr();
+    return history.some(function(h){ return h.type === 'homework' && h.date === t; });
+  }
+  function computeStreak(history){
+    var days = {};
+    history.forEach(function(h){ if(h.type === 'homework') days[h.date] = true; });
+    if(Object.keys(days).length === 0) return 0;
+    var cursor = new Date();
+    if(!days[formatDate(cursor)]) cursor.setDate(cursor.getDate() - 1);
+    var streak = 0;
+    while(days[formatDate(cursor)]){
+      streak += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  }
+  function daysBetween(a, b){
+    var da = new Date(a + 'T00:00:00');
+    var db = new Date(b + 'T00:00:00');
+    return Math.round((db - da) / 86400000);
+  }
+  // サボりレベル: 0=元気 / 1=すね / 2=ぐうたら
+  // 1度も活動がない（生まれたて）場合はサボり扱いしない
+  function neglectLevel(history){
+    if(!history || !history.length) return 0;
+    var last = null;
+    history.forEach(function(h){ if(!last || h.date > last) last = h.date; });
+    if(!last) return 0;
+    var diff = daysBetween(last, todayStr());
+    if(diff >= NEGLECT_AFTER_DAYS_2) return 2;
+    if(diff >= NEGLECT_AFTER_DAYS_1) return 1;
+    return 0;
+  }
+  function pickSpeech(subject, neg){
+    var pool = neg ? NEGLECT_LINES : subject.flavor.concat(ENCOURAGE_LINES);
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  function last7DaysStatus(history){
+    var days = {};
+    history.forEach(function(h){ if(h.type === 'homework') days[h.date] = true; });
+    var arr = [];
+    var now = new Date();
+    for(var i = 6; i >= 0; i--){
+      var dt = new Date(now);
+      dt.setDate(now.getDate() - i);
+      arr.push(!!days[formatDate(dt)]);
+    }
+    return arr;
+  }
+
+  // ---------- rendering ----------
+  function render(){
+    if(speechTimer){ clearInterval(speechTimer); speechTimer = null; }
+    var app = document.getElementById('app');
+    if(ui.screen === 'title') app.innerHTML = renderTitle();
+    else if(ui.screen === 'create') app.innerHTML = renderCreate();
+    else if(ui.screen === 'edit') app.innerHTML = renderEdit();
+    else if(ui.screen === 'home') app.innerHTML = renderHome();
+    else if(ui.screen === 'detail') app.innerHTML = renderDetail();
+    else app.innerHTML = renderTitle();
+    if(ui.screen === 'detail') setupSpeech();
+  }
+
+  function setupSpeech(){
+    var el = document.getElementById('speechBubble');
+    if(!el) return;
+    var profile = getProfile();
+    var subject = getSubject(profile, ui.subjectId);
+    if(!subject) return;
+    var neg = neglectLevel(profile.characters[subject.id].history);
+    speechTimer = setInterval(function(){
+      var b = document.getElementById('speechBubble');
+      if(!b){ if(speechTimer){ clearInterval(speechTimer); speechTimer = null; } return; }
+      b.classList.add('fade');
+      setTimeout(function(){
+        var b2 = document.getElementById('speechBubble');
+        if(!b2) return;
+        b2.firstChild.nodeValue = pickSpeech(subject, neg);
+        b2.classList.remove('fade');
+      }, 250);
+    }, 4500);
+  }
+
+  function renderMonster(subject, stage, size, neg){
+    neg = neg || 0;
+    var base = BODY_SIZE[stage];
+    var px = size === 'big' ? base : Math.round(base * 0.62);
+    var style = '--scolor:' + subject.color + '; --sdark:' + subject.dark + '; --bodysize:' + px + 'px;';
+    var negClass = neg ? ' neglect-' + neg : '';
+    var html = '<div class="monster stage-' + stage + negClass + '" style="' + style + '">';
+    // サボり中はキラキラ演出を消して、しょんぼり見た目にする
+    if(!neg && stage >= 3) html += '<div class="aura"></div>';
+    if(!neg && stage >= 4) html += '<div class="sparkles">✨ ✨ ✨</div>';
+    if(stage >= 2) html += '<div class="ear left"></div><div class="ear right"></div>';
+    html += '<div class="monster-body"><div class="eye"></div><div class="eye"></div>' +
+      '<div class="blush left"></div><div class="blush right"></div><div class="mouth"></div></div>';
+    if(stage >= 2) html += '<div class="accessory">' + subject.emoji + '</div>';
+    if(!neg && stage >= 4) html += '<div class="crown">👑</div>';
+    if(neg === 1) html += '<div class="sweat">💧</div>';
+    if(neg === 2) html += '<div class="zzz">💤</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderTitle(){
+    var profiles = DATA.profiles;
+    var listHtml = profiles.map(renderProfileCard).join('');
+    if(!listHtml) listHtml = '<div class="empty-msg">まだプロフィールがないよ。<br>下のボタンから作ってね!</div>';
+    return (
+      '<div class="card-shell">' +
+        '<h1 class="app-title">📚 時間割モンスター 📚</h1>' +
+        '<div class="subtitle">宿題やテストでモンスターを育てよう!</div>' +
+        '<div class="profile-list">' + listHtml + '</div>' +
+        '<button class="big-btn" data-action="go-create">＋ 新しいプロフィールを作る</button>' +
+        '<div class="footer-note">いつも同じファイルから開くと、つづきから遊べるよ</div>' +
+        '<div class="backup-row">' +
+          '<button class="link-btn" data-action="export-save">📤 セーブを書き出す</button>' +
+          '<button class="link-btn" data-action="import-save">📥 セーブを読み込む</button>' +
+        '</div>' +
+        '<input type="file" id="importFileInput" accept="application/json" style="display:none" />' +
+      '</div>'
+    );
+  }
+
+  function renderProfileCard(p){
+    var totalLevel = p.subjects.reduce(function(sum, s){
+      return sum + levelFromExp(p.characters[s.id].exp).level;
+    }, 0);
+    var initial = escapeHtml((p.name || '?').slice(0,1));
+    return (
+      '<div class="profile-card" style="--pcolor:' + p.color + '" data-action="select-profile" data-id="' + p.id + '">' +
+        '<div class="profile-avatar">' + initial + '</div>' +
+        '<div class="profile-info">' +
+          '<div class="profile-name">' + escapeHtml(p.name) + '</div>' +
+          '<div class="profile-sub">ごうけいLv ' + totalLevel + '</div>' +
+        '</div>' +
+        '<button class="del-btn" data-action="delete-profile" data-id="' + p.id + '" title="削除">×</button>' +
+      '</div>'
+    );
+  }
+
+  function renderCreate(){
+    var swatches = PALETTE.map(function(c){
+      var sel = c === ui.pendingColor ? ' selected' : '';
+      return '<button class="swatch' + sel + '" style="background:' + c + '" data-action="pick-color" data-id="' + c + '"></button>';
+    }).join('');
+
+    var subjectChips = PRESET_SUBJECTS.map(function(s){
+      var on = ui.pendingSubjectIds.indexOf(s.id) !== -1;
+      return '<button class="subj-chip' + (on ? ' on' : '') + '" data-action="toggle-subject" data-id="' + s.id + '">' +
+        '<span class="subj-chip-emoji">' + s.emoji + '</span>' + escapeHtml(s.name) +
+      '</button>';
+    }).join('');
+
+    var customChips = ui.pendingCustomSubjects.map(function(s){
+      return '<span class="custom-chip">' + s.emoji + ' ' + escapeHtml(s.name) +
+        '<button class="custom-chip-x" data-action="remove-custom-subject" data-id="' + s.id + '">×</button>' +
+      '</span>';
+    }).join('');
+
+    var emojiPicker = CUSTOM_EMOJIS.map(function(e){
+      var sel = e === ui.pendingCustomEmoji ? ' selected' : '';
+      return '<button class="emoji-pick' + sel + '" data-action="pick-custom-emoji" data-id="' + e + '">' + e + '</button>';
+    }).join('');
+
+    var totalChosen = ui.pendingSubjectIds.length + ui.pendingCustomSubjects.length;
+
+    return (
+      '<div class="card-shell">' +
+        '<button class="back-btn" data-action="go-title">← もどる</button>' +
+        '<h2>プロフィールをつくる</h2>' +
+        '<div class="form-label">なまえ</div>' +
+        '<input id="profileNameInput" class="text-input" maxlength="8" placeholder="なまえをいれてね" value="' + escapeHtml(ui.pendingName || '') + '" />' +
+        '<div class="form-label">すきな色</div>' +
+        '<div class="color-swatches">' + swatches + '</div>' +
+
+        '<div class="form-label">そだてる教科をえらぼう（' + totalChosen + 'こ）</div>' +
+        '<div class="subj-chip-grid">' + subjectChips + '</div>' +
+
+        '<div class="form-label">自分で教科を追加</div>' +
+        '<div class="custom-chip-row">' + (customChips || '<span class="custom-chip-empty">まだないよ</span>') + '</div>' +
+        '<div class="custom-form">' +
+          '<input id="customSubjectInput" class="text-input" maxlength="6" placeholder="きょうかめい（例：プログラミング）" value="' + escapeHtml(ui.pendingCustomName || '') + '" />' +
+          '<div class="emoji-picker">' + emojiPicker + '</div>' +
+          '<button class="action-btn" data-action="add-custom-subject" style="margin-top:8px;">＋ この教科をついか</button>' +
+        '</div>' +
+
+        (ui.createError ? '<div class="error-text">' + escapeHtml(ui.createError) + '</div>' : '') +
+        '<div style="margin-top:18px;"><button class="big-btn" data-action="make-profile">この内容でつくる</button></div>' +
+      '</div>'
+    );
+  }
+
+  function renderEdit(){
+    var profile = getProfile();
+    if(!profile){ ui.screen = 'title'; return renderTitle(); }
+
+    var swatches = PALETTE.map(function(c){
+      var sel = c === ui.editColor ? ' selected' : '';
+      return '<button class="swatch' + sel + '" style="background:' + c + '" data-action="pick-edit-color" data-id="' + c + '"></button>';
+    }).join('');
+
+    // 既存の教科：教科名・キャラ名を編集 ＋ 削除
+    var subjRows = ui.editSubjects.map(function(s, i){
+      return (
+        '<div class="edit-subj-row">' +
+          '<div class="edit-subj-emoji">' + s.emoji + '</div>' +
+          '<div class="edit-subj-fields">' +
+            '<input id="editSubjName_' + i + '" class="text-input edit-mini" maxlength="6" placeholder="きょうかめい" value="' + escapeHtml(s.name) + '" />' +
+            '<input id="editMonName_' + i + '" class="text-input edit-mini" maxlength="10" placeholder="キャラのなまえ" value="' + escapeHtml(s.monster) + '" />' +
+          '</div>' +
+          '<button class="del-btn" data-action="remove-edit-subject" data-id="' + s.id + '" title="この教科を消す">×</button>' +
+        '</div>'
+      );
+    }).join('');
+
+    // まだ追加していないプリセット教科
+    var presetChips = PRESET_SUBJECTS.filter(function(s){
+      return !ui.editSubjects.some(function(es){ return es.id === s.id; });
+    }).map(function(s){
+      return '<button class="subj-chip" data-action="add-preset-subject" data-id="' + s.id + '">' +
+        '<span class="subj-chip-emoji">' + s.emoji + '</span>' + escapeHtml(s.name) + '</button>';
+    }).join('');
+    if(!presetChips) presetChips = '<span class="custom-chip-empty">ぜんぶ追加ずみ</span>';
+
+    var emojiPicker = CUSTOM_EMOJIS.map(function(e){
+      var sel = e === ui.editAddEmoji ? ' selected' : '';
+      return '<button class="emoji-pick' + sel + '" data-action="pick-edit-custom-emoji" data-id="' + e + '">' + e + '</button>';
+    }).join('');
+
+    return (
+      '<div class="card-shell">' +
+        '<button class="back-btn" data-action="go-home">← もどる</button>' +
+        '<h2>へんしゅう</h2>' +
+        '<div class="form-label">なまえ</div>' +
+        '<input id="editNameInput" class="text-input" maxlength="8" placeholder="なまえ" value="' + escapeHtml(ui.editName || '') + '" />' +
+        '<div class="form-label">すきな色</div>' +
+        '<div class="color-swatches">' + swatches + '</div>' +
+
+        '<div class="form-label">教科とキャラの名前</div>' +
+        '<div class="edit-subj-list">' + (subjRows || '<span class="custom-chip-empty">教科がないよ。下から追加してね</span>') + '</div>' +
+
+        '<div class="form-label">プリセット教科を追加</div>' +
+        '<div class="subj-chip-grid">' + presetChips + '</div>' +
+
+        '<div class="form-label">自分で教科を追加</div>' +
+        '<div class="custom-form">' +
+          '<input id="editCustomInput" class="text-input" maxlength="6" placeholder="きょうかめい（例：プログラミング）" value="' + escapeHtml(ui.editAddName || '') + '" />' +
+          '<div class="emoji-picker">' + emojiPicker + '</div>' +
+          '<button class="action-btn" data-action="add-edit-custom" style="margin-top:8px;">＋ この教科をついか</button>' +
+        '</div>' +
+
+        (ui.editError ? '<div class="error-text">' + escapeHtml(ui.editError) + '</div>' : '') +
+        '<div style="margin-top:18px;"><button class="big-btn" data-action="save-edit">へんこうを保存</button></div>' +
+        '<div class="footer-note">教科を消すと、そのキャラの記録も消えます</div>' +
+      '</div>'
+    );
+  }
+
+  function renderHome(){
+    var profile = getProfile();
+    if(!profile){ ui.screen = 'title'; return renderTitle(); }
+    var totalLevel = profile.subjects.reduce(function(sum, s){
+      return sum + levelFromExp(profile.characters[s.id].exp).level;
+    }, 0);
+    var cards = profile.subjects.map(function(s){ return renderSubjectCard(profile, s); }).join('');
+    return (
+      '<div class="card-shell">' +
+        '<div class="home-header">' +
+          '<button class="icon-btn" data-action="go-title" title="プロフィール切替">🔁</button>' +
+          '<div class="home-title">' +
+            '<div class="home-name">' + escapeHtml(profile.name) + 'のモンスターたち</div>' +
+            '<div class="home-sub">ごうけいLv ' + totalLevel + '</div>' +
+          '</div>' +
+          '<button class="icon-btn" data-action="go-edit" title="名前・教科をへんしゅう">⚙️</button>' +
+          '<button class="icon-btn" data-action="delete-profile" data-id="' + profile.id + '" title="プロフィール削除">🗑️</button>' +
+        '</div>' +
+        '<div class="subject-grid">' + cards + '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderSubjectCard(profile, subject){
+    var charState = profile.characters[subject.id];
+    var lvl = levelFromExp(charState.exp).level;
+    var stage = stageFromLevel(lvl);
+    var neg = neglectLevel(charState.history);
+    var days = last7DaysStatus(charState.history);
+    var dots = days.map(function(d){ return '<span class="dot' + (d ? ' done' : '') + '"></span>'; }).join('');
+    return (
+      '<div class="subject-card" data-action="open-subject" data-id="' + subject.id + '" style="--scolor:' + subject.color + '">' +
+        renderMonster(subject, stage, 'mini', neg) +
+        '<div class="subject-name">' + subject.name + '</div>' +
+        '<div class="subject-level">Lv.' + lvl + '</div>' +
+        '<div class="day-dots">' + dots + '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderDetail(){
+    var profile = getProfile();
+    if(!profile){ ui.screen = 'title'; return renderTitle(); }
+    var subject = getSubject(profile, ui.subjectId);
+    if(!subject){ ui.screen = 'home'; return renderHome(); }
+    var charState = profile.characters[subject.id];
+    var lv = levelFromExp(charState.exp);
+    var stage = stageFromLevel(lv.level);
+    var neg = neglectLevel(charState.history);
+    var streak = computeStreak(charState.history);
+    var doneToday = hasHomeworkToday(charState.history);
+    var firstLine = pickSpeech(subject, neg);
+    var pct = Math.min(100, Math.round((lv.currentExp / lv.neededExp) * 100));
+    var stageLabel = neg ? NEGLECT_LABEL[neg] : STAGE_NAMES[stage - 1];
+
+    var html = '<div class="card-shell" style="--scolor:' + subject.color + '; --sdark:' + subject.dark + '">';
+    html += '<button class="back-btn" data-action="go-home">← もどる</button>';
+    html += '<div class="speech-bubble" id="speechBubble" data-action="talk">' + escapeHtml(firstLine) +
+      '<span class="tap-hint">タップで おしゃべり</span></div>';
+    html += '<div class="detail-monster-wrap" data-action="talk" style="cursor:pointer">' + renderMonster(subject, stage, 'big', neg) + '</div>';
+    html += '<div class="detail-name">' + escapeHtml(subject.monster) +
+      ' <button class="rename-btn" data-action="rename-monster" title="なまえをかえる">✏️</button>' +
+      '<span class="detail-subject">（' + escapeHtml(subject.name) + '）</span></div>';
+    html += '<div class="detail-stage">' + stageLabel + '・Lv.' + lv.level + '</div>';
+    html += '<div class="exp-bar"><div class="exp-fill" style="width:' + pct + '%"></div></div>';
+    html += '<div class="exp-text">' + lv.currentExp + ' / ' + lv.neededExp + ' EXP</div>';
+    html += '<div class="streak-text">🔥 れんぞく ' + streak + '日</div>';
+    html += '<div class="action-row">';
+    html += '<button class="action-btn homework-btn" data-action="do-homework"' + (doneToday ? ' disabled' : '') + '>' +
+      (doneToday ? '✅ きょうはやったね!' : '📝 宿題やったよ!') + '</button>';
+    html += '<button class="action-btn test-btn" data-action="open-test-modal">💯 テストの点数を入力</button>';
+    html += '</div></div>';
+
+    if(ui.testModalOpen) html += renderTestModal();
+    if(ui.overlay) html += renderOverlay();
+    return html;
+  }
+
+  function renderTestModal(){
+    var val = ui.pendingScore != null ? ui.pendingScore : '';
+    return (
+      '<div class="modal-backdrop" data-action="close-test-modal">' +
+        '<div class="modal-box" data-stop="1">' +
+          '<h3>テストの点数は?</h3>' +
+          '<input id="scoreInput" type="number" min="0" max="100" inputmode="numeric" class="score-input" placeholder="0〜100" value="' + val + '" />' +
+          (ui.testError ? '<div class="error-text">' + escapeHtml(ui.testError) + '</div>' : '') +
+          '<div class="modal-btn-row">' +
+            '<button class="action-btn" data-action="close-test-modal">やめる</button>' +
+            '<button class="action-btn primary" data-action="submit-test">きめる!</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function confettiHtml(){
+    var emojis = ['🎉','✨','⭐','🎊','💫'];
+    var html = '';
+    for(var i = 0; i < 14; i++){
+      var e = emojis[i % emojis.length];
+      var left = Math.round(Math.random() * 96);
+      var delay = (Math.random() * 0.6).toFixed(2);
+      var dur = (1.2 + Math.random() * 0.8).toFixed(2);
+      html += '<span class="confetti-piece" style="left:' + left + '%; animation-delay:' + delay + 's; animation-duration:' + dur + 's;">' + e + '</span>';
+    }
+    return html;
+  }
+
+  function renderOverlay(){
+    var o = ui.overlay;
+    return (
+      '<div class="overlay-backdrop" data-action="close-overlay">' +
+        '<div class="overlay-box" data-stop="1">' +
+          (o.celebrate ? '<div class="confetti">' + confettiHtml() + '</div>' : '') +
+          '<div class="overlay-emoji">' + o.emoji + '</div>' +
+          '<div class="overlay-title">' + escapeHtml(o.title) + '</div>' +
+          '<div class="overlay-message">' + escapeHtml(o.message) + '</div>' +
+          '<button class="action-btn primary" data-action="close-overlay">とじる</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  // ---------- actions ----------
+  function awardExp(type, score){
+    var profile = getProfile();
+    var subject = getSubject(profile, ui.subjectId);
+    if(!profile || !subject) return;
+    var charState = profile.characters[subject.id];
+    var before = levelFromExp(charState.exp);
+    var stageBefore = stageFromLevel(before.level);
+    var negBefore = neglectLevel(charState.history);
+
+    var amount = type === 'homework' ? HOMEWORK_EXP : getTestExp(score);
+    var entry = { date: todayStr(), type: type, exp: amount };
+    if(score != null) entry.score = score;
+    charState.history.push(entry);
+
+    var bonusNote = '';
+    if(type === 'homework'){
+      var streak = computeStreak(charState.history);
+      if(streak > 0 && streak % 7 === 0){
+        amount += 25;
+        entry.exp = amount;
+        bonusNote = '🔥 ' + streak + '日連続ボーナス! ';
+      }
+    }
+
+    charState.exp += amount;
+    if(charState.history.length > 200) charState.history = charState.history.slice(-200);
+    save(DATA);
+
+    var after = levelFromExp(charState.exp);
+    var stageAfter = stageFromLevel(after.level);
+    var leveledUp = after.level > before.level;
+    var evolved = stageAfter > stageBefore;
+
+    var title, emoji, message;
+    if(evolved){
+      title = '✨ 進化した! ✨';
+      emoji = '🌟';
+      message = bonusNote + subject.monster + 'が' + STAGE_NAMES[stageAfter - 1] + 'になったよ!';
+    } else if(leveledUp){
+      title = '⬆️ レベルアップ!';
+      emoji = '⬆️';
+      message = bonusNote + subject.monster + 'がLv.' + after.level + 'になったよ!';
+    } else if(negBefore > 0){
+      title = '💖 おかえり!';
+      emoji = '🤗';
+      message = bonusNote + subject.monster + 'が元気をとりもどした! +' + amount + ' EXP';
+    } else if(type === 'test'){
+      title = scoreTierTitle(score);
+      emoji = '💯';
+      message = bonusNote + '+' + amount + ' EXP もらった!';
+    } else {
+      title = homeworkMessage();
+      emoji = '📝';
+      message = bonusNote + '+' + amount + ' EXP もらった!';
+    }
+    ui.overlay = { title:title, emoji:emoji, message:message, celebrate: leveledUp || evolved || negBefore > 0 };
+    ui.screen = 'detail';
+    render();
+  }
+
+  function syncCreateFields(){
+    var n = document.getElementById('profileNameInput');
+    if(n) ui.pendingName = n.value;
+    var c = document.getElementById('customSubjectInput');
+    if(c) ui.pendingCustomName = c.value;
+  }
+
+  function syncEditFields(){
+    var n = document.getElementById('editNameInput');
+    if(n) ui.editName = n.value;
+    var c = document.getElementById('editCustomInput');
+    if(c) ui.editAddName = c.value;
+    ui.editSubjects.forEach(function(s, i){
+      var sn = document.getElementById('editSubjName_' + i);
+      var mn = document.getElementById('editMonName_' + i);
+      if(sn) s.name = sn.value;
+      if(mn) s.monster = mn.value;
+    });
+  }
+
+  function handleAction(action, id, btn){
+    if(ui.screen === 'create') syncCreateFields();
+    if(ui.screen === 'edit') syncEditFields();
+    if(action === 'go-create'){
+      ui.screen = 'create'; ui.pendingName = ''; ui.pendingColor = PALETTE[0]; ui.createError = null;
+      ui.pendingSubjectIds = DEFAULT_SUBJECT_IDS.slice();
+      ui.pendingCustomSubjects = [];
+      ui.pendingCustomEmoji = CUSTOM_EMOJIS[0];
+      ui.pendingCustomName = '';
+      render();
+    } else if(action === 'go-title'){
+      ui.screen = 'title'; ui.profileId = null;
+      render();
+    } else if(action === 'go-home'){
+      ui.screen = 'home'; ui.testModalOpen = false; ui.overlay = null;
+      render();
+    } else if(action === 'go-edit'){
+      var ep = getProfile();
+      if(!ep){ ui.screen = 'title'; render(); return; }
+      ui.editName = ep.name;
+      ui.editColor = ep.color;
+      ui.editSubjects = ep.subjects.map(function(s){ return Object.assign({}, s); });
+      ui.editAddEmoji = CUSTOM_EMOJIS[0];
+      ui.editAddName = '';
+      ui.editError = null;
+      ui.screen = 'edit';
+      render();
+    } else if(action === 'pick-edit-color'){
+      ui.editColor = id;
+      render();
+    } else if(action === 'remove-edit-subject'){
+      if(window.confirm('この教科とキャラの記録を消します。よろしいですか?')){
+        ui.editSubjects = ui.editSubjects.filter(function(s){ return s.id !== id; });
+        render();
+      }
+    } else if(action === 'add-preset-subject'){
+      var preset = PRESET_SUBJECTS.find(function(s){ return s.id === id; });
+      if(preset && !ui.editSubjects.some(function(s){ return s.id === id; })){
+        ui.editSubjects.push(Object.assign({}, preset));
+      }
+      render();
+    } else if(action === 'pick-edit-custom-emoji'){
+      ui.editAddEmoji = id;
+      render();
+    } else if(action === 'add-edit-custom'){
+      var ecInput = document.getElementById('editCustomInput');
+      var ecName = ecInput ? ecInput.value.trim() : '';
+      if(!ecName){ ui.editError = '教科名をいれてね!'; render(); return; }
+      ui.editError = null;
+      ui.editSubjects.push(makeCustomSubject(ecName, ui.editAddEmoji, ui.editSubjects.length));
+      ui.editAddEmoji = CUSTOM_EMOJIS[0];
+      ui.editAddName = '';
+      render();
+    } else if(action === 'save-edit'){
+      var eProfile = getProfile();
+      if(!eProfile){ ui.screen = 'title'; render(); return; }
+      var eName = (ui.editName || '').trim();
+      if(!eName){ ui.editError = 'なまえをいれてね!'; render(); return; }
+      if(!ui.editSubjects.length){ ui.editError = '教科を1つ以上のこしてね!'; render(); return; }
+      eProfile.name = eName;
+      eProfile.color = ui.editColor || PALETTE[0];
+      var newChars = {};
+      eProfile.subjects = ui.editSubjects.map(function(s){
+        s.name = (s.name && s.name.trim()) ? s.name.trim() : 'きょうか';
+        s.monster = (s.monster && s.monster.trim()) ? s.monster.trim() : (s.name + 'モン');
+        newChars[s.id] = eProfile.characters[s.id] || { exp:0, history:[] };
+        return s;
+      });
+      eProfile.characters = newChars;
+      save(DATA);
+      ui.editError = null;
+      ui.screen = 'home';
+      render();
+    } else if(action === 'rename-monster'){
+      var rp = getProfile();
+      var rs = getSubject(rp, ui.subjectId);
+      if(!rp || !rs) return;
+      var nn = window.prompt('キャラのなまえをかえる', rs.monster);
+      if(nn != null){
+        nn = nn.trim();
+        if(nn){ rs.monster = nn; save(DATA); render(); }
+      }
+    } else if(action === 'talk'){
+      var bb = document.getElementById('speechBubble');
+      if(bb){
+        var tp = getProfile();
+        var ts = getSubject(tp, ui.subjectId);
+        if(ts){
+          var tneg = neglectLevel(tp.characters[ts.id].history);
+          bb.classList.add('fade');
+          setTimeout(function(){
+            var b3 = document.getElementById('speechBubble');
+            if(b3){ b3.firstChild.nodeValue = pickSpeech(ts, tneg); b3.classList.remove('fade'); }
+          }, 200);
+        }
+      }
+    } else if(action === 'select-profile'){
+      ui.profileId = id; ui.screen = 'home';
+      render();
+    } else if(action === 'delete-profile'){
+      if(window.confirm('このプロフィールを削除します。育てたモンスターも消えますが、よろしいですか?')){
+        DATA.profiles = DATA.profiles.filter(function(p){ return p.id !== id; });
+        save(DATA);
+        if(ui.profileId === id){ ui.profileId = null; ui.screen = 'title'; }
+        render();
+      }
+    } else if(action === 'pick-color'){
+      ui.pendingColor = id;
+      var parent = btn.parentNode;
+      if(parent){
+        Array.prototype.forEach.call(parent.querySelectorAll('.swatch'), function(el){ el.classList.remove('selected'); });
+      }
+      btn.classList.add('selected');
+    } else if(action === 'toggle-subject'){
+      var pos = ui.pendingSubjectIds.indexOf(id);
+      if(pos === -1) ui.pendingSubjectIds.push(id);
+      else ui.pendingSubjectIds.splice(pos, 1);
+      render();
+    } else if(action === 'pick-custom-emoji'){
+      ui.pendingCustomEmoji = id;
+      render();
+    } else if(action === 'add-custom-subject'){
+      var customInput = document.getElementById('customSubjectInput');
+      var customName = customInput ? customInput.value.trim() : '';
+      if(!customName){ ui.createError = '教科名をいれてね!'; render(); return; }
+      ui.createError = null;
+      var newSubj = makeCustomSubject(customName, ui.pendingCustomEmoji, ui.pendingCustomSubjects.length);
+      ui.pendingCustomSubjects.push(newSubj);
+      ui.pendingCustomEmoji = CUSTOM_EMOJIS[0];
+      ui.pendingCustomName = '';
+      render();
+    } else if(action === 'remove-custom-subject'){
+      ui.pendingCustomSubjects = ui.pendingCustomSubjects.filter(function(s){ return s.id !== id; });
+      render();
+    } else if(action === 'make-profile'){
+      var nameInput = document.getElementById('profileNameInput');
+      var name = nameInput ? nameInput.value.trim() : '';
+      if(!name){ ui.createError = 'なまえをいれてね!'; render(); return; }
+      var chosenPresets = PRESET_SUBJECTS.filter(function(s){ return ui.pendingSubjectIds.indexOf(s.id) !== -1; });
+      var subjects = chosenPresets.concat(ui.pendingCustomSubjects);
+      if(!subjects.length){ ui.createError = '教科を1つ以上えらんでね!'; render(); return; }
+      var profile = { id: 'p' + Date.now(), name: name, color: ui.pendingColor || PALETTE[0], subjects: subjects, characters: freshCharacters(subjects) };
+      DATA.profiles.push(profile);
+      save(DATA);
+      ui.pendingName = ''; ui.createError = null;
+      ui.profileId = profile.id; ui.screen = 'home';
+      render();
+    } else if(action === 'open-subject'){
+      ui.subjectId = id; ui.screen = 'detail'; ui.testModalOpen = false; ui.overlay = null;
+      render();
+    } else if(action === 'do-homework'){
+      var profile2 = getProfile();
+      var subject2 = getSubject(profile2, ui.subjectId);
+      if(!profile2 || !subject2) return;
+      if(hasHomeworkToday(profile2.characters[subject2.id].history)) return;
+      awardExp('homework', null);
+    } else if(action === 'open-test-modal'){
+      ui.testModalOpen = true; ui.pendingScore = null; ui.testError = null;
+      render();
+    } else if(action === 'close-test-modal'){
+      ui.testModalOpen = false; ui.testError = null;
+      render();
+    } else if(action === 'submit-test'){
+      var scoreInput = document.getElementById('scoreInput');
+      var val = scoreInput ? parseInt(scoreInput.value, 10) : NaN;
+      if(isNaN(val) || val < 0 || val > 100){
+        ui.testError = '0〜100のすうじをいれてね';
+        render();
+        return;
+      }
+      ui.testModalOpen = false;
+      awardExp('test', val);
+    } else if(action === 'close-overlay'){
+      ui.overlay = null;
+      render();
+    } else if(action === 'export-save'){
+      exportSave();
+    } else if(action === 'import-save'){
+      var fileInput = document.getElementById('importFileInput');
+      if(fileInput) fileInput.click();
+    }
+  }
+
+  function showToast(msg){
+    var existing = document.querySelector('.toast');
+    if(existing) existing.remove();
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(function(){ el.remove(); }, 2600);
+  }
+
+  function exportSave(){
+    try{
+      var blob = new Blob([JSON.stringify(DATA, null, 2)], { type:'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'jikanwari-monster-save.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+      showToast('セーブデータを書き出したよ!');
+    }catch(e){
+      showToast('書き出しに失敗したよ…');
+    }
+  }
+
+  function importSaveFromFile(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var parsed = JSON.parse(reader.result);
+        if(!parsed || !Array.isArray(parsed.profiles)) throw new Error('invalid');
+        DATA = parsed;
+        save(DATA);
+        showToast('セーブデータを読み込んだよ!');
+        render();
+      }catch(e){
+        showToast('読み込めなかったよ。ファイルを確認してね');
+      }
+    };
+    reader.onerror = function(){ showToast('読み込めなかったよ。ファイルを確認してね'); };
+    reader.readAsText(file);
+  }
+
+  document.addEventListener('click', function(e){
+    var stopEl = e.target.closest('[data-stop]');
+    var backdrop = e.target.closest('.modal-backdrop, .overlay-backdrop');
+    if(stopEl && backdrop && stopEl !== backdrop){
+      // click happened on the inner box; only close if the actual target IS the backdrop
+    }
+    var btn = e.target.closest('[data-action]');
+    if(!btn) return;
+    // prevent backdrop close-clicks from firing when clicking inside the inner box
+    if((btn.classList.contains('modal-backdrop') || btn.classList.contains('overlay-backdrop')) && e.target.closest('[data-stop]')){
+      return;
+    }
+    handleAction(btn.dataset.action, btn.dataset.id, btn);
+  });
+
+  document.addEventListener('keydown', function(e){
+    if(e.key !== 'Enter') return;
+    var active = document.activeElement;
+    if(ui.screen === 'create' && active && active.id === 'profileNameInput'){
+      handleAction('make-profile');
+    } else if(ui.screen === 'create' && active && active.id === 'customSubjectInput'){
+      e.preventDefault();
+      handleAction('add-custom-subject');
+    } else if(ui.screen === 'edit' && active && active.id === 'editCustomInput'){
+      e.preventDefault();
+      handleAction('add-edit-custom');
+    } else if(ui.testModalOpen && active && active.id === 'scoreInput'){
+      handleAction('submit-test');
+    }
+  });
+
+  document.addEventListener('change', function(e){
+    if(e.target && e.target.id === 'importFileInput' && e.target.files && e.target.files[0]){
+      importSaveFromFile(e.target.files[0]);
+    }
+  });
+
+  render();
+
+  if(!storageWorks()){
+    showToast('⚠️ このブラウザでは自動保存ができないみたい。「セーブを書き出す」で時々バックアップしてね');
+  }
+})();
+</script>
+</body>
+</html>
